@@ -6,6 +6,6 @@
 ### compile and run
 > $ make
 
-$ bin/db-main
+> $ bin/db-main
 
 ### compiled library: bin/m3-database.a
