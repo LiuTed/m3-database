@@ -3,7 +3,7 @@ CXX	:= g++
 AR  := ar
 RANLIB  := ranlib
 
-LDFLAGS :=
+LDFLAGS := -lpthread
 FLAGS 	:= -g ${LDFLAGS} -O0 #-march=native -O2
 CFLAGS 	:= ${FLAGS}
 CPPFLAGS:= -std=c++14 ${FLAGS}

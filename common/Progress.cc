@@ -11,8 +11,8 @@ bool ProgressBar::_can_redraw(double new_val)
     return false;
 }
 
-ProgressBar::ProgressBar(std::ostream &ou, double full_range, int wid)
-    : out(ou), full(full_range), show_percent(0)
+ProgressBar::ProgressBar(std::ostream &ou, double full_range, const std::string &pref, int wid)
+    : out(ou), prefix(pref), full(full_range), show_percent(0)
 {
     this->setWidth(wid);
 }

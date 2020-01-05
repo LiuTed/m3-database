@@ -28,6 +28,28 @@ class DatablockTest : public Test
         virtual bool run() override;
 };
 
+class DataFrameTest : public Test
+{
+    public:
+        virtual std::string getName() const override
+        {
+            return "Data Frame Test";
+        } 
+
+        virtual bool run() override;
+};
+
+class QueueTest : public Test
+{
+    public:
+        virtual std::string getName() const override
+        {
+            return "Producer Consumer Queue Test";
+        }
+        
+        virtual bool run() override;
+};
+
 } // test
 
 #endif

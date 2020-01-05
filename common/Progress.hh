@@ -18,6 +18,7 @@ class ProgressBar
     private:
         std::ostream &out;
         std::string PBSTR;
+        std::string prefix;
         double full;
         double current;         // real progress
         double show_percent;    // current percent showing in the terminal
@@ -38,12 +39,12 @@ class ProgressBar
             auto val = current / full * 100.;
             int lpad = (int)(current / full * width);
             int rpad = width - lpad;
-            std::printf("\r%5.1f%% [%.*s%*s]", val, lpad, PBSTR.c_str(), rpad, ""); 
+            std::printf("\r%s: %5.1f%% [%.*s%*s]", prefix.c_str(), val, lpad, PBSTR.c_str(), rpad, ""); 
             this->show_percent = val;
             out<<buf;
             out.flush();
             delete []buf;
-            //if(current == full) out<<"Done !"<<std::endl;
+            if(current == full) out<<"Done !"<<std::endl;
         }
 
         bool _can_redraw(double new_val);
@@ -54,7 +55,7 @@ class ProgressBar
          * construct the bar using an output stream and full range,
          * default bar width will be 50
          */
-        ProgressBar(std::ostream &out, double full_range, int wid = 50);
+        ProgressBar(std::ostream &out, double full_range, const std::string &prefix = "", int wid = 50);
 
         /**
          * method setWidth 

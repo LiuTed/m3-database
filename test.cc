@@ -1,6 +1,7 @@
 #include "common/common.hh"
 #include "common/Test.hh"
 #include "test/testcommon.hh"
+#include "test/testsys.hh"
 
 
 int main()
@@ -9,6 +10,9 @@ int main()
 
     tester.emplace<test::CommonTest>();
     tester.emplace<test::DatablockTest>();
+    tester.emplace<test::DataFrameTest>();
+    tester.emplace<test::QueueTest>();
+    tester.emplace<test::CarrierEnvTest>();
 
     tester.start(true);
 }

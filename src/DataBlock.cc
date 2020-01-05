@@ -23,7 +23,7 @@ Datablock Datablock::select(const std::vector<int> &c) const
 void Datablock::set(int index, double value)
 {
     if((unsigned)index > cols.size()) 
-        throw std::out_of_range("Datablock::get: index out of range");
+        throw std::out_of_range("Datablock::set: index out of range");
     this->cols[index] = value;
 }
 

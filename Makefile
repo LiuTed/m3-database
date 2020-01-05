@@ -1,5 +1,5 @@
 include Makefile.in
-SUBDIRS = test common src
+SUBDIRS = test src common
 SUBOBJS = $(addprefix bin/, $(addsuffix .a, $(SUBDIRS)))
 
 
