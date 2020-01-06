@@ -14,6 +14,7 @@ int main()
     tester.emplace<test::QueueTest>();
     tester.emplace<test::CarrierEnvTest>();
     tester.emplace<test::DBContextTest>();
+    tester.emplace<test::End2EndTest>();
 
     tester.start(true);
 }

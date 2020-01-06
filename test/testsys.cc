@@ -53,3 +53,59 @@ bool DBContextTest::run()
     return true;
 }
 
+/* ================== End2EndTest ================== */
+bool End2EndTest::run_one_carrier(db::Carrier_t crr, const std::string &dir_file,
+        const std::string &trace_file)
+{
+    using namespace std::chrono_literals;
+    auto *pdbc = db::DatabaseContext::GetDatabaseContext();
+    db::Initialize({{crr, dir_file}});
+    /* read trace file and update */
+    //common::input_helper helper(trace_file, ' ');
+    /* 0,1: gps, 7: time, 9: cid */
+    std::cerr.sync_with_stdio(false);
+    src::DataFrame df(trace_file);
+    for(auto &db : df.getData())
+    {
+        //LOG("Data", db.get(0), db.get(1), db.get(8), db.get(10));
+        db::UpdateCellID((db::Cid_t)(db.get(10)), crr);
+        db::UpdateGPS(db.get(1), db.get(2), db.get(8));
+        std::this_thread::sleep_for(1ms);
+        auto val = pdbc->getPrediction(crr);
+        LOG_DEBUG("Val is:");
+        std::cerr<<val.to_string()<<std::endl;
+    }
+
+    pdbc->wait();
+    db::DatabaseContext::DeleteDatabaseContext();
+    return true;
+}
+
+bool End2EndTest::run()
+{
+    bool ret = true;
+
+    ret = run_one_carrier(db::MOBILE, "running/dir-Mobile.txt", "running/testtrace-Mobile.csv");
+    if(!ret)
+    { 
+        LOG_ERROR("Mobile test does not pass!");
+        return false;
+    }
+
+    ret = run_one_carrier(db::UNICOM, "running/dir-Unicom.txt", "running/testtrace-Unicom.csv");
+    if(!ret)
+    { 
+        LOG_ERROR("Unicom test does not pass!");
+        return false;
+    }
+
+    ret = run_one_carrier(db::TELECOM, "running/dir-Telecom.txt", "running/testtrace-Telecom.csv");
+    if(!ret)
+    { 
+        LOG_ERROR("Telecom test does not pass!");
+        return false;
+    }
+    
+    LOG_MESSAGE("All passed!");
+    return true;
+}

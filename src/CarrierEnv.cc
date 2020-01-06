@@ -1,4 +1,5 @@
 #include <functional>
+#include <algorithm>
 #include "CarrierEnv.hh"
 #include "../common/Progress.hh"
 
@@ -35,7 +36,7 @@ namespace src
 CarrierEnv::CarrierEnv(const std::vector<std::string> &files)
 {
     using lb = src::Label;
-    std::cerr<<"[ DEBUG ]: CarrierEnv: got "<<files.size()<<" data files"<<std::endl;
+    LOG_DEBUG("CarrierEnv: Got ", files.size(), "data files");
     common::ProgressBar bar(std::cerr, files.size(), "Reading");
     for(auto &file: files)
     {
@@ -67,7 +68,7 @@ DataFrame CarrierEnv::getPrediction()
 
 void CarrierEnv::updateLocation(double lng, double lat, double time)
 {
-    LOG_DEBUG("Enter updateLocation");
+    LOG_DEBUG("CarrierEnv::updateLocation", lng, lat, time, "df size is", df.size());
     const static double SAME_LOCATION_THRESHOLD = 100; // if more than 100m, 2 locations are different location
     const static double MATCH_LENGTH = 5;   // get [t, t+5)
     /* for each day, get the nearest location point */
@@ -100,6 +101,7 @@ void CarrierEnv::updateLocation(double lng, double lat, double time)
 
         /* now, linear search for the nearest point in block, and get its time t */
         if (block.rows() == 0) continue;    // skip if no data
+        //LOG_DEBUG("small block size is: ", block.rows());
         auto nearest_record = findNearest(curr_loc, block); // it is the nearest point
         Loc_t nearest_loc{nearest_record.get(col_lng), nearest_record.get(col_lat)};
         if(getDistance(nearest_loc, curr_loc) > SAME_LOCATION_THRESHOLD 
@@ -114,6 +116,8 @@ void CarrierEnv::updateLocation(double lng, double lat, double time)
                         b.get(col_time) < start_time + MATCH_LENGTH &&
                         b.get(col_time) >= start_time;
                 });
+
+        LOG_DEBUG("next 5 sec size is: ", next_5sec.rows());
 
         /* change the time from [t, t+5) to [0, 5) */
         auto &temp_vec = next_5sec.getData();
@@ -167,10 +171,6 @@ void CarrierEnv::updateLocation(double lng, double lat, double time)
         std::unique_lock<std::mutex> lock(this->pred_lock);
         this->prediction = temp_pred;
     }
-
-    std::cerr<<"[ DEBUG ]: CarrierEnv::updateLocation: "<<lng<<", "<<lat
-            <<", "<<time<<", Final result is "<<std::endl
-            <<temp_pred.to_string()<<std::endl;
 }
 
 }   // namespace src
