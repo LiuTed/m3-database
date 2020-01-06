@@ -1,11 +1,11 @@
 ## M3-Database
 
 ### test:
+> $ cd running/ && ./preparedata.sh
+
 > $ make check
 
 ### compile and run
 > $ make
 
-> $ bin/db-main
-
-### compiled library: bin/m3-database.a
+#### compiled library: bin/m3-database.a
