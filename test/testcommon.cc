@@ -23,6 +23,11 @@ bool CommonTest::run()
     ASSERT(vec.size() == 2);
     ASSERT(vec[1] == "b");
 
+    common::Log("TEST", 1,2,3,"hello world");
+    LOG_ERROR("test log error");
+    LOG_MESSAGE("test log message");
+    LOG("EVERYTHING", "test log");
+
     //
     return true;
 }
@@ -105,7 +110,9 @@ bool QueueTest::run()
                 };
     auto cons =  [](src::ConsumerProducerQueue<int> &q, std::vector<int> &dst){
                      for(int i=0;i<200;i++)
-                         dst.push_back(q.consume());
+                     {
+                         dst.push_back(q.pop());
+                     }
                  };
 
     std::thread producer(prod, std::ref(queue), std::ref(src));

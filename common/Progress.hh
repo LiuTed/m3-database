@@ -20,7 +20,7 @@ class ProgressBar
         std::string PBSTR;
         std::string prefix;
         double full;
-        double current;         // real progress
+        double current = 0;         // real progress
         double show_percent;    // current percent showing in the terminal
     private:
         

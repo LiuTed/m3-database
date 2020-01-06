@@ -35,6 +35,7 @@ namespace src
 CarrierEnv::CarrierEnv(const std::vector<std::string> &files)
 {
     using lb = src::Label;
+    std::cerr<<"[ DEBUG ]: CarrierEnv: got "<<files.size()<<" data files"<<std::endl;
     common::ProgressBar bar(std::cerr, files.size(), "Reading");
     for(auto &file: files)
     {
@@ -54,13 +55,19 @@ void CarrierEnv::updateCell(Cid_t new_cell)
     this->current_cell = new_cell;
 }
 
-DataFrame CarrierEnv::getPrediction() const
+DataFrame CarrierEnv::getPrediction()
 {
+    DataFrame ret;
+    {
+        std::unique_lock<std::mutex> lock(this->pred_lock);
+        ret = this->prediction;
+    }
     return this->prediction;
 }
 
 void CarrierEnv::updateLocation(double lng, double lat, double time)
 {
+    LOG_DEBUG("Enter updateLocation");
     const static double SAME_LOCATION_THRESHOLD = 100; // if more than 100m, 2 locations are different location
     const static double MATCH_LENGTH = 5;   // get [t, t+5)
     /* for each day, get the nearest location point */
@@ -118,6 +125,9 @@ void CarrierEnv::updateLocation(double lng, double lat, double time)
         allFrame.extend(next_5sec);
     }
 
+    LOG_DEBUG("allFrame is:");
+    std::cerr<<allFrame.to_string()<<std::endl;
+
 
     /* now, we should make prediction based on allFrame */
     /* thp[0:5] = daily average thp[0:5], Byte per sec*/
@@ -127,7 +137,6 @@ void CarrierEnv::updateLocation(double lng, double lat, double time)
     DataFrame temp_pred;
     temp_pred.setLabels(this->prediction.getLabels());
 
-    std::cerr<<"Add df: "<<allFrame.to_string()<<std::endl;
     for(int t = 0; t < MATCH_LENGTH; t++)   // for each second
     {
         temp_pred.addRow();
@@ -154,8 +163,14 @@ void CarrierEnv::updateLocation(double lng, double lat, double time)
     }
 
     /* lock and update the label */
-    this->prediction = temp_pred;
-    std::cerr<<this->prediction.to_string()<<std::endl;
+    {
+        std::unique_lock<std::mutex> lock(this->pred_lock);
+        this->prediction = temp_pred;
+    }
+
+    std::cerr<<"[ DEBUG ]: CarrierEnv::updateLocation: "<<lng<<", "<<lat
+            <<", "<<time<<", Final result is "<<std::endl
+            <<temp_pred.to_string()<<std::endl;
 }
 
 }   // namespace src

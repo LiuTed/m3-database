@@ -33,7 +33,20 @@ template<typename T> class ConsumerProducerQueue
             cond.notify_all();
         }
 
-        T consume()
+        T top()
+        {
+            std::unique_lock<std::mutex> lock(mutex);
+            cond.wait(lock, [this]()
+                    { return !isEmpty(); });
+            auto ret = cpq.front();
+            //cpq.pop();
+            lock.unlock();
+            cond.notify_all();
+            return ret;
+
+        }
+
+        T pop()
         {
             std::unique_lock<std::mutex> lock(mutex);
             cond.wait(lock, [this]()
@@ -43,7 +56,6 @@ template<typename T> class ConsumerProducerQueue
             lock.unlock();
             cond.notify_all();
             return ret;
-
         }
 
         /* it will never full! */

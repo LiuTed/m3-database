@@ -13,6 +13,7 @@ int main()
     tester.emplace<test::DataFrameTest>();
     tester.emplace<test::QueueTest>();
     tester.emplace<test::CarrierEnvTest>();
+    tester.emplace<test::DBContextTest>();
 
     tester.start(true);
 }

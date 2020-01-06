@@ -1,6 +1,7 @@
 #ifndef _CARRIER_ENV_HH_
 #define _CARRIER_ENV_HH_
 
+#include <mutex>
 #include "DataFrame.hh"
 
 namespace src
@@ -15,6 +16,9 @@ class CarrierEnv
         Cid_t current_cell;
         std::vector<DataFrame> df;
         DataFrame prediction;
+
+    private:
+        std::mutex pred_lock;   /* lock for read/write predictions */
 
     public:
         CarrierEnv() = default;
@@ -41,7 +45,7 @@ class CarrierEnv
          * method getPrediction
          * get the current prediction
          */
-        DataFrame getPrediction() const;
+        DataFrame getPrediction();
 };
 
 } // namespace src
