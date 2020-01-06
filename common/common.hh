@@ -29,6 +29,7 @@ class input_helper;
 std::vector<std::string> split(const std::string &s, char c=' ');
 template <typename T1, typename T2> std::string to_string(const std::pair<T1, T2> &p);
 template <typename ...Types> void Log(const std::string &prefix, Types ...args);
+using std::to_string;
 } // namespace common
 
 namespace db
