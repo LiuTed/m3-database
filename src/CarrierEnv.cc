@@ -68,7 +68,7 @@ DataFrame CarrierEnv::getPrediction()
 
 void CarrierEnv::updateLocation(double lng, double lat, double time)
 {
-    LOG_DEBUG("CarrierEnv::updateLocation", lng, lat, time, "df size is", df.size());
+    LOG_MESSAGE("CarrierEnv::updateLocation", lng, lat, time, "df size is", df.size());
     const static double SAME_LOCATION_THRESHOLD = 100; // if more than 100m, 2 locations are different location
     const static double MATCH_LENGTH = 5;   // get [t, t+5)
     /* for each day, get the nearest location point */
@@ -80,9 +80,11 @@ void CarrierEnv::updateLocation(double lng, double lat, double time)
     Cid_t curr_cell = this->current_cell;
 
     /* dataFrame for all matched data */
+    int total_matched_day = 0;
     DataFrame allFrame;
     allFrame.setLabels(this->df[0].getLabels());
     allFrame.addColumn("day", 0);
+
 
     for(unsigned i = 0; i < df.size(); i++) // for each day
     {
@@ -117,8 +119,6 @@ void CarrierEnv::updateLocation(double lng, double lat, double time)
                         b.get(col_time) >= start_time;
                 });
 
-        LOG_DEBUG("next 5 sec size is: ", next_5sec.rows());
-
         /* change the time from [t, t+5) to [0, 5) */
         auto &temp_vec = next_5sec.getData();
         for(auto &db : temp_vec) 
@@ -127,10 +127,10 @@ void CarrierEnv::updateLocation(double lng, double lat, double time)
         /* add the column: "day" */
         next_5sec.addColumn("day", i);
         allFrame.extend(next_5sec);
+        total_matched_day += 1;
     }
 
-    LOG_DEBUG("allFrame is:");
-    std::cerr<<allFrame.to_string()<<std::endl;
+    LOG_MESSAGE("Total Matched day:", total_matched_day);
 
 
     /* now, we should make prediction based on allFrame */
