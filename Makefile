@@ -18,10 +18,10 @@ bin/m3-database.a: ${SUBOBJS}
 	- ${RANLIB} $@
 
 $(SUBDIRS): 
+	- mkdir -p bin/
 	make -C $@ -j2
 
 $(SUBOBJS): $(SUBDIRS)
-	- mkdir -p bin/
 
 clean:
 	for dir in $(SUBDIRS); do \
@@ -30,6 +30,7 @@ clean:
 	rm -rf bin/*
 
 check: bin/test
+	- mkdir -p bin/
 	- cd running && ./preparedata.sh
 	- bin/test
 
