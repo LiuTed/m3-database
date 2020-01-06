@@ -28,7 +28,8 @@ clean:
 	rm -rf bin/*
 
 check: bin/test
-	- OMP_NUM_THREADS=1 bin/test
+	- cd running && ./preparedata.sh
+	- bin/test
 
 lines: 
 	- find . -name \*.hh -print -o -name \*.cc -print | xargs wc -l
