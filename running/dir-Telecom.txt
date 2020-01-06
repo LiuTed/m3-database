@@ -1,5 +1,3 @@
-/home/CORP.PKUSC.ORG/aposta/projects/m3-database/running/testdata/20191207.5098-Teleco-final.csv.1
 /home/CORP.PKUSC.ORG/aposta/projects/m3-database/running/testdata/20191213.5098-Teleco-final.csv.2
 /home/CORP.PKUSC.ORG/aposta/projects/m3-database/running/testdata/20191214.5101-Teleco-final.csv.2
 /home/CORP.PKUSC.ORG/aposta/projects/m3-database/running/testdata/20191215.5098-Teleco-final.csv.1
-/home/CORP.PKUSC.ORG/aposta/projects/m3-database/running/testdata/20191215.5099-Teleco-final.csv.1

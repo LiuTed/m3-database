@@ -64,6 +64,9 @@ bool End2EndTest::run_one_carrier(db::Carrier_t crr, const std::string &dir_file
     /* 0,1: gps, 7: time, 9: cid */
     std::cerr.sync_with_stdio(false);
     src::DataFrame df(trace_file);
+    int i = std::rand() % (df.rows() - 30);
+    LOG_MESSAGE("Testing carrier", crr, "Randomly choose 30 seconds start from", i);
+    df = df.where(df.getColumn(src::Label::INDEX), [i](double ind){return std::round(ind) >= i && ind < i + 30;});
     for(auto &db : df.getData())
     {
         //LOG("Data", db.get(0), db.get(1), db.get(8), db.get(10));
@@ -73,7 +76,7 @@ bool End2EndTest::run_one_carrier(db::Carrier_t crr, const std::string &dir_file
         auto val = pdbc->getPrediction(crr);
         LOG_DEBUG("Val is:");
         std::cerr<<val.to_string()<<std::endl;
-        std::this_thread::sleep_for(std::chrono::milliseconds(900));
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
 
     pdbc->wait();
