@@ -1,7 +1,6 @@
 #include <stdexcept>
 #include <typeinfo>
 #include <iostream>
-#include "mkldnn_debug.h"
 #include "Test.hh"
 
 using namespace test;
