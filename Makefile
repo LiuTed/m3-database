@@ -4,6 +4,7 @@ SUBOBJS = $(addprefix bin/, $(addsuffix .a, $(SUBDIRS)))
 
 
 all: bin/test bin/db-main bin/m3-database.a #$(SUBDIRS)
+	- mkdir -p bin/
 	make check
 
 bin/db-main: main.cc ${SUBOBJS}
@@ -20,6 +21,7 @@ $(SUBDIRS):
 	make -C $@ -j2
 
 $(SUBOBJS): $(SUBDIRS)
+	- mkdir -p bin/
 
 clean:
 	for dir in $(SUBDIRS); do \
