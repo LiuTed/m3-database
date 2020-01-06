@@ -2,6 +2,14 @@
 #include "../src/database.hh"
 #include <functional>
 #include <iostream>
+#include "../src/Serializeable.hh"
+#include "../src/database.hh"
+#include "../src/DataBlock.hh"
+#include "../src/DataFrame.hh"
+#include "../src/Queue.hh"
+#include "../src/CarrierEnv.hh"
+#include "../src/DatabaseContext.hh"
+
 
 
 using namespace test;
@@ -97,7 +105,6 @@ bool DataFrameTest::run()
 /* ============ Queue test =========== */
 bool QueueTest::run() 
 {
-    using namespace std::chrono_literals;
     src::ConsumerProducerQueue<int> queue;
     std::vector<int> src, dst;
     for(int i=0;i<200;i++) src.push_back(std::rand());
@@ -105,7 +112,7 @@ bool QueueTest::run()
                     for(unsigned i=0;i<src.size();i++)
                     {
                         q.add(src[i]);
-                        std::this_thread::sleep_for(1ms);
+                        std::this_thread::sleep_for(std::chrono::milliseconds(1));
                     }
                 };
     auto cons =  [](src::ConsumerProducerQueue<int> &q, std::vector<int> &dst){

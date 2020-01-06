@@ -57,7 +57,6 @@ bool DBContextTest::run()
 bool End2EndTest::run_one_carrier(db::Carrier_t crr, const std::string &dir_file,
         const std::string &trace_file)
 {
-    using namespace std::chrono_literals;
     auto *pdbc = db::DatabaseContext::GetDatabaseContext();
     db::Initialize({{crr, dir_file}});
     /* read trace file and update */
@@ -70,10 +69,11 @@ bool End2EndTest::run_one_carrier(db::Carrier_t crr, const std::string &dir_file
         //LOG("Data", db.get(0), db.get(1), db.get(8), db.get(10));
         db::UpdateCellID((db::Cid_t)(db.get(10)), crr);
         db::UpdateGPS(db.get(1), db.get(2), db.get(8));
-        std::this_thread::sleep_for(1ms);
+        pdbc->wait();
         auto val = pdbc->getPrediction(crr);
         LOG_DEBUG("Val is:");
         std::cerr<<val.to_string()<<std::endl;
+        std::this_thread::sleep_for(std::chrono::milliseconds(900));
     }
 
     pdbc->wait();
