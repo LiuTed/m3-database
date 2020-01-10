@@ -10,7 +10,7 @@ common.a: ${OBJ}
 	- ${RANLIB} $@
 	- cp $@ ../bin
 
-%.o: %.cc %.hh
+%.o: %.cc
 	${CXX} -c $< -o $@ ${CPPFLAGS}
 
 clean:

@@ -3,11 +3,13 @@
 
 #include <map>
 #include "../common/common.hh"
+#include "./DatabaseContext.hh"
 
 namespace db
 {
 
-struct Prediction;  // TODO: define the data-structure! 
+// struct Prediction;  // TODO: define the data-structure! 
+typedef src::DataFrame Prediction;
 
 /* initialization */
 void Initialize(const std::map<Carrier_t, std::string> &dir_files); // in DatabaseContext.cc

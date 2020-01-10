@@ -35,7 +35,7 @@ using std::to_string;
 namespace db
 {
 using Cid_t = int64_t;
-enum Carrier_t { MOBILE = 0, UNICOM = 1, TELECOM = 2};
+enum Carrier_t { MOBILE = 0, UNICOM = 1, TELECOM = 2, count};
 } // namespace db
 
 namespace   // anonymous namespace
