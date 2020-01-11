@@ -15,6 +15,7 @@
 #include <iostream>
 #include <random>
 #include <vector>
+#include <stdexcept>
 
 #define SUPPRESS_UNUSED(var) do {static_cast<void>(var);} while(0);
 #define LOG_ERROR(...)      common::Log("ERROR"  , __VA_ARGS__, ::combine_ffl(__FILE__, __func__, __LINE__))
