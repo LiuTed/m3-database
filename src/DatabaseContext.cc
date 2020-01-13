@@ -1,4 +1,5 @@
 #include <thread>
+#include "database.hh"
 #include "DatabaseContext.hh"
 
 namespace db
@@ -171,6 +172,11 @@ void UpdateCellID(src::Cid_t cell, Carrier_t carrier)
 {
     DatabaseContext::GetDatabaseContext()->addRequest(
             DatabaseContext::forgeCellRequest(cell, carrier));
+}
+
+Prediction GetPrediction(Carrier_t crr)
+{
+    DatabaseContext::GetDatabaseContext()->getPrediction(crr);
 }
 
 }   // namespace db

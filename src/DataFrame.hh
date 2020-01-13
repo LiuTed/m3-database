@@ -47,6 +47,15 @@ class DataFrame : public Serializable
         /* read the data file and construct the DataFrame */
         DataFrame(const std::string &filename); 
 
+        DataFrame(DataFrame &&rhs): label(std::move(rhs.label)), data(std::move(rhs.data)) {}
+
+        DataFrame(const DataFrame&) = default;
+        DataFrame& operator = (const DataFrame& rhs)
+        {
+            label = rhs.label;
+            data = rhs.data;
+        }
+
         /* return column count */
         size_t columns() const { return label.size(); }
         /* return row count */

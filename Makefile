@@ -13,8 +13,11 @@ bin/db-main: main.cc ${SUBOBJS}
 bin/test: test.cc ${SUBOBJS}
 	${CXX} $^ -o $@ ${CPPFLAGS}
 
+m3-database.a: bin/m3-database.a
+
 bin/m3-database.a: ${SUBOBJS}
-	- ${AR} -r $@ $^
+	cd bin && for i in *.a; do ar -x $$i; done
+	- ${AR} -r $@ bin/*.o
 	- ${RANLIB} $@
 
 $(SUBDIRS): 
