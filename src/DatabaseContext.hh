@@ -51,6 +51,9 @@ class DatabaseContext
         std::mutex wait_mutex;  /* control the wait_cond, also secure the access to requestQueue */
         std::condition_variable wait_cond;
 
+        int finished_jobid = 0;
+        std::mutex jobid_mutex;
+
     private:    /* private static fields */
         static DatabaseContext *pDBContext;
 
@@ -65,9 +68,10 @@ class DatabaseContext
 
     public:     /* public methods */
         void initialize(Carrier_t carrier, const std::vector<std::string> &files);
-        void addRequest(const src::UpdateRequest &req);  /* non-blocking */
+        void addRequest(src::UpdateRequest &req);  /* non-blocking */
         src::DataFrame getPrediction(Carrier_t cr); /* non-blocking */
         void wait();    /* blocking until queue is empty */
+        int getFinishedJobid(); /* get finished_jobid */
 
     public:     /* public static methods */
         static DatabaseContext   *GetDatabaseContext();
@@ -93,6 +97,7 @@ class UpdateRequest
 {
     public:
         enum RequestType {GPS, CELL, STOP};
+        int jobid;
     public:
         RequestType type;
         std::vector<double> values; 

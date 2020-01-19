@@ -29,6 +29,12 @@ void DatabaseContext::mainLoop()
         }
         requestQueue.pop();
 
+        /* finished execution, modify finished_jobid */
+        {
+            std::unique_lock<std::mutex> lk(this->jobid_mutex);
+            this->finished_jobid = request.jobid;
+        }
+
         /* check if it's empty, and notify wait condition */
         {
             std::unique_lock<std::mutex> lk(this->wait_mutex);
@@ -70,9 +76,13 @@ void DatabaseContext::initialize(Carrier_t crr, const std::vector<std::string> &
 }
 
 
-void DatabaseContext::addRequest(const src::UpdateRequest &req)
+void DatabaseContext::addRequest(src::UpdateRequest &req)
 {
+    static int total_jobs = 0;
     std::unique_lock<std::mutex> lock(this->wait_mutex);
+    /* increase the jobid and insert the request */
+    total_jobs += 1;
+    req.jobid = total_jobs;
     this->requestQueue.add(req);
     //LOG_DEBUG("DatabaseContext::addRequest: new request added!");
 }
@@ -128,6 +138,12 @@ src::UpdateRequest DatabaseContext::forgeCellRequest(src::Cid_t cid, Carrier_t c
     return ret;
 }
 
+int DatabaseContext::getFinishedJobid()
+{
+    std::unique_lock<std::mutex> lk(this->jobid_mutex);
+    return this->finished_jobid;
+}
+
 DatabaseContext::~DatabaseContext()
 {
     //this->isRunning = false;
@@ -162,21 +178,28 @@ void Initialize(const std::map<Carrier_t, std::string> &dir_files)
 }
 
 
-void UpdateGPS(double lng, double lat, double time)
+int UpdateGPS(double lng, double lat, double time)
 {
     auto req = DatabaseContext::forgeGPSRequest(lng, lat, time);
     DatabaseContext::GetDatabaseContext()->addRequest(req);
+    return req.jobid;
 }
 
-void UpdateCellID(src::Cid_t cell, Carrier_t carrier)
+int UpdateCellID(src::Cid_t cell, Carrier_t carrier)
 {
-    DatabaseContext::GetDatabaseContext()->addRequest(
-            DatabaseContext::forgeCellRequest(cell, carrier));
+    auto req = DatabaseContext::forgeCellRequest(cell, carrier);
+    DatabaseContext::GetDatabaseContext()->addRequest(req);
+    return req.jobid;
 }
 
 Prediction GetPrediction(Carrier_t crr)
 {
-    DatabaseContext::GetDatabaseContext()->getPrediction(crr);
+    return DatabaseContext::GetDatabaseContext()->getPrediction(crr);
+}
+
+int GetFinishedJobid()
+{
+    return DatabaseContext::GetDatabaseContext()->getFinishedJobid();
 }
 
 }   // namespace db

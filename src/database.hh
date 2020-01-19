@@ -15,11 +15,11 @@ typedef src::DataFrame Prediction;
 void Initialize(const std::map<Carrier_t, std::string> &dir_files); // in DatabaseContext.cc
 
 /* unblocking interface for update states */
-void UpdateGPS(double lng, double lat, double time);    // in DatabaseContext.cc
-void UpdateCellID(Cid_t cell_id, Carrier_t carrier);    // in DatabaseContext.cc
+int UpdateGPS(double lng, double lat, double time);    // in DatabaseContext.cc
+int UpdateCellID(Cid_t cell_id, Carrier_t carrier);    // in DatabaseContext.cc
 
-/* unblocking interface for get value */
-// TODO: define a Prediction for it!
+/* unblocking interface for getting value and finished jobs */
+int GetFinishedJobid();
 Prediction GetPrediction(Carrier_t crr);
 
 /* communication interface */
