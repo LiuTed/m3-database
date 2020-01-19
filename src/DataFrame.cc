@@ -106,7 +106,7 @@ std::string DataFrame::getLabel(int index) const
     return this->label[index];
 }
 
-std::string DataFrame::to_string() const
+std::string DataFrame::to_string(bool with_header) const
 { 
     std::stringstream sout;
     sout.setf(std::ios::fixed);
@@ -116,9 +116,12 @@ std::string DataFrame::to_string() const
     if(data.size() > 0)
         for(size_t i = 0; i < this->data[0].size(); i++) 
             width = std::max((size_t)width, std::to_string(data[0].get(i)).length());
-    for(auto &l : this->label)
-        sout<<std::setw(width)<<l;
-    sout<<std::endl;
+    if(with_header)
+    {
+        for(auto &l : this->label)
+            sout<<std::setw(width)<<l;
+        sout<<std::endl;
+    }
     for(auto &db : this->data)
     {
         for(size_t i = 0; i < db.size(); i++)
@@ -131,6 +134,11 @@ std::string DataFrame::to_string() const
         sout<<std::endl;
     }
     return sout.str();
+}
+
+std::string DataFrame::to_string() const
+{
+    return this->to_string(true);
 }
 
 int DataFrame::getColumn(const std::string &col) const

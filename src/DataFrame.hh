@@ -148,6 +148,7 @@ class DataFrame : public Serializable
 
         /* print the Frame */
         std::string to_string() const;
+        std::string to_string(bool with_header) const;
 
         virtual void serialize(std::ostream &o) const override;
         virtual void deserialize(std::istream &i) const override;
