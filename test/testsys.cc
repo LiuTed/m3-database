@@ -46,9 +46,13 @@ bool DBContextTest::run()
                     {db::TELECOM, "running/dir-Telecom.txt"}});
 
     src::Cid_t cid = 229816326;
-    db::UpdateCellID(cid, db::MOBILE);
-    db::UpdateGPS(117.314079, 34.184841,0);
+    int jid1 = db::UpdateCellID(cid, db::MOBILE);
+    int jid2 = db::UpdateGPS(117.314079, 34.184841,0);
     pdbc->wait();
+    int fjid = db::GetFinishedJobid();
+    LOG_DEBUG("Job id 1:", jid1, ", Job id 2:", jid2);
+    ASSERT(jid1 < jid2);
+    ASSERT(fjid >= jid2);
     db::DatabaseContext::DeleteDatabaseContext();
     return true;
 }
