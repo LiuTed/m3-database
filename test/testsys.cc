@@ -22,7 +22,7 @@ bool CarrierEnvTest::run()
         if(vec.empty()) continue;
         filenames.push_back(vec[0]);
     }
-    src::CarrierEnv env(filenames);
+    src::CarrierEnv env(filenames, {}, {});
 
     src::Cid_t cid = 229816326;
     env.updateCell(cid);
