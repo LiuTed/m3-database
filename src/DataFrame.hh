@@ -11,6 +11,7 @@ namespace src
 {
 class Label;
 class DataFrame;
+class DataFrameHelper;
 
 /**
  * class Label
@@ -54,6 +55,7 @@ class DataFrame : public Serializable
         {
             label = rhs.label;
             data = rhs.data;
+            return *this;
         }
 
         /* return column count */
@@ -152,6 +154,16 @@ class DataFrame : public Serializable
 
         virtual void serialize(std::ostream &o) const override;
         virtual void deserialize(std::istream &i) const override;
+};
+
+class DataFrameHelper
+{
+    private:
+    public:
+        static void      CopyLabel(DataFrame &dst, const DataFrame &src);
+        static DataFrame GetAverage(const DataFrame &frame);
+        static DataFrame GetMax(const DataFrame &frame);
+        static DataFrame GetMin(const DataFrame &frame);
 };
 
 } // namespace src

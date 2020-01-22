@@ -39,6 +39,8 @@ CarrierEnv::CarrierEnv(const std::vector<std::string> &files,
 {
     using lb = src::Label;
     LOG_DEBUG("CarrierEnv: Got ", files.size(), "data files");
+    LOG_DEBUG("CarrierEnv: Got ", ho_files.size(), "handover files");
+    LOG_DEBUG("CarrierEnv: Got ", bound_files.size(), "boundary files");
     common::ProgressBar bar(std::cerr, 
             files.size() + ho_files.size() + bound_files.size(), "Reading");
     for(auto &file: files)
@@ -48,19 +50,19 @@ CarrierEnv::CarrierEnv(const std::vector<std::string> &files,
         df.back().setLabels({lb::INDEX, lb::LONGTITUDE, lb::LATITIDE, lb::SPEED,
                 lb::THROUGHPUT, lb::RTT, lb::LOSS, lb::RSRP, lb::TIME,
                 lb::HANDOVER, lb::CELLID});
+        //LOG_DEBUG("CarrierEnv: File:", file, ", get", df.back().rows(), "records");
     }
 
-    LOG_DEBUG("CarrierEnv: Got ", ho_files.size(), "handover files");
     for(auto &file : ho_files)
     {
         bar.increase(1);
         ho_df.emplace_back(file);
         df.back().setLabels({lb::INDEX, lb::LONGTITUDE, lb::LATITIDE, lb::RSRP,
                 lb::HANDOVER, lb::CELLID});
+        //LOG_DEBUG("CarrierEnv: File:", file, ", get", ho_df.back().rows(), "records");
     }
 
     /* TODO: initialize boundary dataFrame */
-    LOG_DEBUG("CarrierEnv: Got ", bound_files.size(), "boundary files");
     LOG("WARNING", "CarrierEnv: Need to implement boundary DataFrame initialization");
     this->tcp_prediction.setLabels({lb::TIME, lb::THROUGHPUT, lb::RTT, lb::LOSS, lb::HANDOVER});
     this->ho_prediction.setLabels({lb::TIME, lb::CELLID, "Successful Rate", "time to fail"});

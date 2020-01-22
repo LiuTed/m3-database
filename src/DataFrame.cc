@@ -9,7 +9,7 @@ namespace src
 DataFrame::DataFrame(const std::string &filename)
 {
     common::input_helper helper(filename,' ');
-    size_t maxcols = 0;
+    size_t maxcols = 1;
     while(helper.hasNext())
     {
         auto vec = helper.next();
@@ -73,7 +73,11 @@ DataFrame &DataFrame::addColumn(const std::string &name, double default_val)
 DataFrame &DataFrame::addRow()
 {
     this->data.emplace_back();
-    for(auto &l : this->label) this->data.back().add(0.0);
+    for(auto &l : this->label) 
+    {
+        SUPPRESS_UNUSED(l);
+        this->data.back().add(0.0);
+    }
     return *this;
 }
 
@@ -148,14 +152,39 @@ int DataFrame::getColumn(const std::string &col) const
     return std::distance(label.begin(), it);
 }
 
+void DataFrameHelper::CopyLabel(DataFrame &dst, const DataFrame &src)
+{
+    dst.setLabels(src.getLabels());
+}
+
+DataFrame DataFrameHelper::GetAverage(const DataFrame &df)
+{
+    DataFrame ret;
+    CopyLabel(ret, df);
+    ret.addRow();
+
+    std::vector<double> values;
+    values.resize(df.columns());
+
+    for(auto &row : df.getData())
+        for(unsigned i=0;i<df.columns();i++)
+            values[i] += row.get(i);
+
+    for(unsigned i = 0; i < df.columns(); i++)
+        ret.getData()[0].set(i, values[i] / df.rows());
+
+    return ret;
+}
 
 void DataFrame::serialize(std::ostream &o) const
 {
+    SUPPRESS_UNUSED(o);
     throw std::runtime_error("Not implemented!");
 }
 
 void DataFrame::deserialize(std::istream &i) const
 {
+    SUPPRESS_UNUSED(i);
     throw std::runtime_error("Not implemented!");
 }
 
