@@ -20,7 +20,8 @@ class CarrierEnv
 
     private:
         Cid_t current_cell;
-        std::vector<DataFrame> df, ho_df, bd_df;
+        std::vector<DataFrame> df;
+        DataFrame ho_df, bd_df;
         DataFrame tcp_prediction, ho_prediction;
 
         GPS_t prev_location;

@@ -31,6 +31,8 @@ class Label
         const static std::string HANDOVER;      /* handover, 0~4, 0 means no handover */
         const static std::string CELLID;        /* cell id, should be an int */
         const static std::string INDEX;         /* index of the entry */
+        const static std::string SUCCESS_RATE;  /* the possibility of ho success */
+        const static std::string HOTIME;        /* predicted ho time */
 };
 
 /**

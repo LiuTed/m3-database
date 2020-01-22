@@ -41,6 +41,12 @@ CarrierEnv::CarrierEnv(const std::vector<std::string> &files,
     LOG_DEBUG("CarrierEnv: Got ", files.size(), "data files");
     LOG_DEBUG("CarrierEnv: Got ", ho_files.size(), "handover files");
     LOG_DEBUG("CarrierEnv: Got ", bound_files.size(), "boundary files");
+    if(ho_files.size() > 1)
+    {
+        LOG_ERROR("CarrierEnv: can only have at most 1 handover file to initialize!");
+        throw std::runtime_error("CarrierEnv: can only have at most 1 handover file to initialize");
+    }
+
     common::ProgressBar bar(std::cerr, 
             files.size() + ho_files.size() + bound_files.size(), "Reading");
     for(auto &file: files)
@@ -55,17 +61,16 @@ CarrierEnv::CarrierEnv(const std::vector<std::string> &files,
 
     for(auto &file : ho_files)
     {
-        bar.increase(1);
-        ho_df.emplace_back(file);
-        df.back().setLabels({lb::INDEX, lb::LONGTITUDE, lb::LATITIDE, lb::RSRP,
+        ho_df = DataFrame(file);
+        ho_df.setLabels({lb::INDEX, lb::LONGTITUDE, lb::LATITIDE, lb::RSRP,
                 lb::HANDOVER, lb::CELLID});
-        //LOG_DEBUG("CarrierEnv: File:", file, ", get", ho_df.back().rows(), "records");
+        //LOG_DEBUG("CarrierEnv: File:", ho_files[0], ", get", ho_df.rows(), "records");
     }
 
     /* TODO: initialize boundary dataFrame */
     LOG("WARNING", "CarrierEnv: Need to implement boundary DataFrame initialization");
     this->tcp_prediction.setLabels({lb::TIME, lb::THROUGHPUT, lb::RTT, lb::LOSS, lb::HANDOVER});
-    this->ho_prediction.setLabels({lb::TIME, lb::CELLID, "Successful Rate", "time to fail"});
+    this->ho_prediction.setLabels({lb::TIME, lb::CELLID, lb::SUCCESS_RATE, lb::HOTIME});
     this->ho_prediction.addRow();   // reserve a row to store the results
     current_cell = 0;
 }
@@ -80,13 +85,14 @@ DataFrame CarrierEnv::getPrediction()
     DataFrame ret;
     {
         std::unique_lock<std::mutex> lock(this->pred_lock);
-        ret = this->tcp_prediction;
+        ret = this->ho_prediction;
     }
-    return this->tcp_prediction;
+    return ret; 
 }
 
 void CarrierEnv::updateLocation(double lng, double lat, double time)
 {
+    LOG_MESSAGE("CarrierEnv::updateLocation", lng, lat, time, "df size is", df.size());
     this->predict_tcp(lng, lat, time);
     this->predict_handover(lng, lat, time);
     prev_location = {lng, lat, time};
@@ -95,16 +101,27 @@ void CarrierEnv::updateLocation(double lng, double lat, double time)
 void CarrierEnv::predict_handover(double lng, double lat, double time)
 {
     //throw std::runtime_error("CarrierEnv::predict_handover: not implemented!");
-    double v_lng = (lng - prev_location.lng) / time;
-    double v_lat = (lat - prev_location.lat) / time;
+    double v_lng = (lng - prev_location.lng) / (time - prev_location.time);
+    double v_lat = (lat - prev_location.lat) / (time - prev_location.time);
 
     /* use cell id to find the next handover location */
     double next_lng, next_lat;
+    /* select the current cell id */
+    auto cid_col = this->ho_df.getColumn(Label::CELLID),
+         lng_col = this->ho_df.getColumn(Label::LONGTITUDE),
+         lat_col = this->ho_df.getColumn(Label::LATITIDE);
 
-    // TODO: modify here to implement
-    LOG("WARNING", "TODO: CarrierEnv::predict_handover: add code to implement it!");
-    next_lng = lng;
-    next_lat = lat;
+    auto cell_df = this->ho_df.where(cid_col, [this](const double d){return int(d) == this->current_cell;});
+    if(cell_df.rows() == 0)
+    {
+        LOG("WARNING", "CarrierEnv::predict_handover: no cell handover information!");
+        return;
+    }
+    auto avg_df = DataFrameHelper::GetAverage(cell_df);
+    LOG_DEBUG("\n",avg_df.to_string());
+
+    next_lng = avg_df.getData()[0].get(lng_col);
+    next_lat = avg_df.getData()[0].get(lat_col);
 
     /* use speed to calculate time:
      * let X = (delta_x, delta_y), 
@@ -119,22 +136,23 @@ void CarrierEnv::predict_handover(double lng, double lat, double time)
     double delta_lng = next_lng - lng,
            delta_lat = next_lat - lat;
     double remain_time = ((delta_lng * v_lng) + (delta_lat * v_lat)) / 
-                            (v_lng * v_lng + v_lat * v_lat);
+        (v_lng * v_lng + v_lat * v_lat);
+    LOG_DEBUG("CarrierEnv::predict_handover: remain time is: ", remain_time);
 
     /* modify the prediction result */
     {
         std::unique_lock<std::mutex> lk(pred_lock);
         /* set prediction to 0 */
-        this->ho_prediction.getData()[0].set(0, remain_time);
+        this->ho_prediction.getData()[0].set(0, time + remain_time);
+        this->ho_prediction.getData()[0].set(1, this->current_cell);
     }
-    LOG_ERROR("CarrierEnv::predict_handover: not implemented!");
+    //LOG_ERROR("CarrierEnv::predict_handover: not implemented!");
 }
 
 
 
 void CarrierEnv::predict_tcp(double lng, double lat, double time)
 {
-    LOG_MESSAGE("CarrierEnv::predict_tcp", lng, lat, time, "df size is", df.size());
     const static double SAME_LOCATION_THRESHOLD = 100; // if more than 100m, 2 locations are different location
     const static double MATCH_LENGTH = 5;   // get [t, t+5)
     /* for each day, get the nearest location point */
@@ -162,9 +180,9 @@ void CarrierEnv::predict_tcp(double lng, double lat, double time)
 
         auto block = curr_df.where([=](const Datablock &b)
                 {
-                    auto ln = b.get(col_lng),
-                         la = b.get(col_lat);
-                    return std::fabs(lng - ln) < 0.2 && std::fabs(lat - la) < 0.2;
+                auto ln = b.get(col_lng),
+                la = b.get(col_lat);
+                return std::fabs(lng - ln) < 0.2 && std::fabs(lat - la) < 0.2;
                 });
 
         /* now, linear search for the nearest point in block, and get its time t */
@@ -180,9 +198,9 @@ void CarrierEnv::predict_tcp(double lng, double lat, double time)
         /* now, get the [t, t+5) second data */
         auto next_5sec = curr_df.where([start_time, col_time](const Datablock &b)
                 {
-                    return //b.get(col_cell) == curr_cell && 
-                        b.get(col_time) < start_time + MATCH_LENGTH &&
-                        b.get(col_time) >= start_time;
+                return //b.get(col_cell) == curr_cell && 
+                b.get(col_time) < start_time + MATCH_LENGTH &&
+                b.get(col_time) >= start_time;
                 });
 
         /* change the time from [t, t+5) to [0, 5) */
@@ -214,7 +232,7 @@ void CarrierEnv::predict_tcp(double lng, double lat, double time)
 
         auto time_col = allFrame.getColumn(lb::TIME);
         auto tdf = allFrame.where(time_col, [t](double v){return std::round(v) == t;})
-                           .select({lb::THROUGHPUT, lb::RTT, lb::LOSS, lb::HANDOVER});
+            .select({lb::THROUGHPUT, lb::RTT, lb::LOSS, lb::HANDOVER});
 
         for(auto label : tdf.getLabels())   // for each type
         {
@@ -257,7 +275,7 @@ static src::Datablock findNearest(const Loc_t &loc, const src::DataFrame &df)
 {
     src::DataFrame ret;
     ret.setLabels(df.getLabels());
-    
+
     std::vector<Loc_t> vec;
     auto col1 = df.getColumn(src::Label::LONGTITUDE),
          col2 = df.getColumn(src::Label::LATITIDE);
@@ -270,6 +288,6 @@ static src::Datablock findNearest(const Loc_t &loc, const src::DataFrame &df)
 
     return df.where([target, col1, col2](const src::Datablock &b)
             {
-                return b.get(col1) == target.first && b.get(col2) == target.second;
+            return b.get(col1) == target.first && b.get(col2) == target.second;
             }).getData()[0];
 }

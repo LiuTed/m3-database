@@ -202,5 +202,7 @@ const std::string Label::RSRP       = "RSRP";
 const std::string Label::HANDOVER   = "handover";
 const std::string Label::CELLID     = "cell-id";
 const std::string Label::INDEX      = "index";
+const std::string Label::SUCCESS_RATE = "success rate";
+const std::string Label::HOTIME     = "handover time";
 
 } // namespace src

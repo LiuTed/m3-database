@@ -93,6 +93,7 @@ bool End2EndTest::run()
     bool ret = true;
 
     ret = run_one_carrier(db::MOBILE, "running/dir-Mobile.txt", "running/testtrace-Mobile.csv");
+    //ret = run_one_carrier(db::MOBILE, "../m3db-data/dir-Mobile.1", "running/testtrace-Mobile.csv");
     if(!ret)
     { 
         LOG_ERROR("Mobile test does not pass!");

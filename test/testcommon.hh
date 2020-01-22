@@ -39,6 +39,17 @@ class DataFrameTest : public Test
         virtual bool run() override;
 };
 
+class DataFrameHelperTest : public Test
+{
+    public:
+        virtual std::string getName() const override
+        {
+            return "Data Frame Helper Test";
+        }
+
+        virtual bool run() override;
+};
+
 class QueueTest : public Test
 {
     public:
