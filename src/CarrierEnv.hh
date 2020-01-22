@@ -13,12 +13,24 @@ class CarrierEnv;
 class CarrierEnv
 {
     private:
+        struct GPS_t 
+        {
+            double lng, lat, time;
+        };
+
+    private:
         Cid_t current_cell;
-        std::vector<DataFrame> df;
-        DataFrame prediction;
+        std::vector<DataFrame> df, ho_df, bd_df;
+        DataFrame tcp_prediction, ho_prediction;
+
+        GPS_t prev_location;
 
     private:
         std::mutex pred_lock;   /* lock for read/write predictions */
+
+    private:
+        void predict_tcp(double lng, double lat, double time);
+        void predict_handover(double lng, double lat, double time);
 
     public:
         CarrierEnv() = default;
@@ -26,7 +38,9 @@ class CarrierEnv
         /**
          * initialize with several files
          */
-        CarrierEnv(const std::vector<std::string> &files);
+        CarrierEnv(const std::vector<std::string> &data_files,
+                    const std::vector<std::string> &ho_files,
+                    const std::vector<std::string> &bound_files);
 
         /**
          * method updateCell. 

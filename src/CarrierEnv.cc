@@ -33,11 +33,14 @@ struct LocCmp
 namespace src
 {
 
-CarrierEnv::CarrierEnv(const std::vector<std::string> &files)
+CarrierEnv::CarrierEnv(const std::vector<std::string> &files,
+        const std::vector<std::string> &ho_files,
+        const std::vector<std::string> &bound_files)
 {
     using lb = src::Label;
     LOG_DEBUG("CarrierEnv: Got ", files.size(), "data files");
-    common::ProgressBar bar(std::cerr, files.size(), "Reading");
+    common::ProgressBar bar(std::cerr, 
+            files.size() + ho_files.size() + bound_files.size(), "Reading");
     for(auto &file: files)
     {
         bar.increase(1);
@@ -47,7 +50,21 @@ CarrierEnv::CarrierEnv(const std::vector<std::string> &files)
                 lb::HANDOVER, lb::CELLID});
     }
 
-    this->prediction.setLabels({lb::TIME, lb::THROUGHPUT, lb::RTT, lb::LOSS, lb::HANDOVER});
+    LOG_DEBUG("CarrierEnv: Got ", ho_files.size(), "handover files");
+    for(auto &file : ho_files)
+    {
+        bar.increase(1);
+        ho_df.emplace_back(file);
+        df.back().setLabels({lb::INDEX, lb::LONGTITUDE, lb::LATITIDE, lb::RSRP,
+                lb::HANDOVER, lb::CELLID});
+    }
+
+    /* TODO: initialize boundary dataFrame */
+    LOG_DEBUG("CarrierEnv: Got ", bound_files.size(), "boundary files");
+    LOG("WARNING", "CarrierEnv: Need to implement boundary DataFrame initialization");
+    this->tcp_prediction.setLabels({lb::TIME, lb::THROUGHPUT, lb::RTT, lb::LOSS, lb::HANDOVER});
+    this->ho_prediction.setLabels({lb::TIME, lb::CELLID, "Successful Rate", "time to fail"});
+    this->ho_prediction.addRow();   // reserve a row to store the results
     current_cell = 0;
 }
 
@@ -61,14 +78,61 @@ DataFrame CarrierEnv::getPrediction()
     DataFrame ret;
     {
         std::unique_lock<std::mutex> lock(this->pred_lock);
-        ret = this->prediction;
+        ret = this->tcp_prediction;
     }
-    return this->prediction;
+    return this->tcp_prediction;
 }
 
 void CarrierEnv::updateLocation(double lng, double lat, double time)
 {
-    LOG_MESSAGE("CarrierEnv::updateLocation", lng, lat, time, "df size is", df.size());
+    this->predict_tcp(lng, lat, time);
+    this->predict_handover(lng, lat, time);
+    prev_location = {lng, lat, time};
+}
+
+void CarrierEnv::predict_handover(double lng, double lat, double time)
+{
+    //throw std::runtime_error("CarrierEnv::predict_handover: not implemented!");
+    double v_lng = (lng - prev_location.lng) / time;
+    double v_lat = (lat - prev_location.lat) / time;
+
+    /* use cell id to find the next handover location */
+    double next_lng, next_lat;
+
+    // TODO: modify here to implement
+    LOG("WARNING", "TODO: CarrierEnv::predict_handover: add code to implement it!");
+    next_lng = lng;
+    next_lat = lat;
+
+    /* use speed to calculate time:
+     * let X = (delta_x, delta_y), 
+     * let Y = (speed_x, speed_y), --> speed = |Y|
+     * time = proj / |Y|, where proj = |project X to Y|
+     *      = |X| * cos<X,Y> / |Y|
+     *      = |X| * (X·Y) / (|X| * |Y|) / |Y|
+     *      = (X·Y) / Y^2
+     *      = [(delta_x * speed_x) + (delta_y * speed_y)] / 
+     *                  (speed_x * speed_x + speed_y * speed_y)
+     */
+    double delta_lng = next_lng - lng,
+           delta_lat = next_lat - lat;
+    double remain_time = ((delta_lng * v_lng) + (delta_lat * v_lat)) / 
+                            (v_lng * v_lng + v_lat * v_lat);
+
+    /* modify the prediction result */
+    {
+        std::unique_lock<std::mutex> lk(pred_lock);
+        /* set prediction to 0 */
+        this->ho_prediction.getData()[0].set(0, remain_time);
+    }
+    LOG_ERROR("CarrierEnv::predict_handover: not implemented!");
+}
+
+
+
+void CarrierEnv::predict_tcp(double lng, double lat, double time)
+{
+    LOG_MESSAGE("CarrierEnv::predict_tcp", lng, lat, time, "df size is", df.size());
     const static double SAME_LOCATION_THRESHOLD = 100; // if more than 100m, 2 locations are different location
     const static double MATCH_LENGTH = 5;   // get [t, t+5)
     /* for each day, get the nearest location point */
@@ -139,7 +203,7 @@ void CarrierEnv::updateLocation(double lng, double lat, double time)
     /* loss[0:5] = daily average ..., 0~1 */
     /* handver[0:5] = daily average ... (1 means always handover, 0 means no handover) */
     DataFrame temp_pred;
-    temp_pred.setLabels(this->prediction.getLabels());
+    temp_pred.setLabels(this->tcp_prediction.getLabels());
 
     for(int t = 0; t < MATCH_LENGTH; t++)   // for each second
     {
@@ -169,7 +233,7 @@ void CarrierEnv::updateLocation(double lng, double lat, double time)
     /* lock and update the label */
     {
         std::unique_lock<std::mutex> lock(this->pred_lock);
-        this->prediction = temp_pred;
+        this->tcp_prediction = temp_pred;
     }
 }
 

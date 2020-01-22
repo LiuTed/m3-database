@@ -67,7 +67,11 @@ class DatabaseContext
         void start();   /* run the main thread */
 
     public:     /* public methods */
-        void initialize(Carrier_t carrier, const std::vector<std::string> &files);
+        void initialize(Carrier_t carrier, 
+                    const std::vector<std::string> &datafiles,
+                    const std::vector<std::string> &hofiles,
+                    const std::vector<std::string> &bdfiles);
+
         void addRequest(src::UpdateRequest &req);  /* non-blocking */
         src::DataFrame getPrediction(Carrier_t cr); /* non-blocking */
         void wait();    /* blocking until queue is empty */

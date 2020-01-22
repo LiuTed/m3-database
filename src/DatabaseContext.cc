@@ -68,11 +68,14 @@ void DatabaseContext::start()
     t.detach(); /* add the new thread */
 }
 
-void DatabaseContext::initialize(Carrier_t crr, const std::vector<std::string> &files)
+void DatabaseContext::initialize(Carrier_t crr, 
+        const std::vector<std::string> &datafiles,
+        const std::vector<std::string> &hofiles,
+        const std::vector<std::string> &bdfiles)
 {
     this->carriers.emplace(std::piecewise_construct,
             std::forward_as_tuple(crr),
-            std::forward_as_tuple(files));
+            std::forward_as_tuple(datafiles, hofiles, bdfiles));
 }
 
 
@@ -165,15 +168,37 @@ void Initialize(const std::map<Carrier_t, std::string> &dir_files)
         auto carrier = ent.first;
         auto dirfile = ent.second;
         common::input_helper helper(dirfile);
-        std::vector<std::string> filenames;
-        filenames.clear();
+        std::vector<std::string> datafiles, hofiles, bdfiles;
+        datafiles.clear();
+        hofiles.clear();
+        bdfiles.clear();
         while(helper.hasNext())
         {
             auto vec = helper.next();
             if(vec.empty()) continue;
-            filenames.push_back(vec[0]);
+            if(vec[0] == "F") break;
+            datafiles.push_back(vec[0]);
         }
-        pdbc->initialize(carrier, filenames);
+
+        /* hofiles */
+        while(helper.hasNext())
+        {
+            auto vec = helper.next();
+            if(vec.empty()) continue;
+            if(vec[0] == "F") break;
+            hofiles.push_back(vec[0]);
+        }
+
+        /* dbfiles */
+        while(helper.hasNext())
+        {
+            auto vec = helper.next();
+            if(vec.empty()) continue;
+            if(vec[0] == "F") break;
+            bdfiles.push_back(vec[0]);
+        }
+
+        pdbc->initialize(carrier, datafiles, hofiles, bdfiles);
     }
 }
 
