@@ -68,9 +68,16 @@ CarrierEnv::CarrierEnv(const std::vector<std::string> &files,
     }
 
     /* TODO: initialize boundary dataFrame */
+    for(auto &file : bound_files)
+    {
+        bd_df = DataFrame(file);
+        bd_df.setLabels({lb::INDEX, lb::CELLID, lb::LONGTITUDE, lb::LNG_CFDS,
+                lb::LATITIDE, lb::LAT_CFDS, lb::BOUND_STATUS});
+        //LOG_DEBUG("CarrierEnv: File:", ho_files[0], ", get", ho_df.rows(), "records");
+    }
     LOG("WARNING", "CarrierEnv: Need to implement boundary DataFrame initialization");
     this->tcp_prediction.setLabels({lb::TIME, lb::THROUGHPUT, lb::RTT, lb::LOSS, lb::HANDOVER});
-    this->ho_prediction.setLabels({lb::TIME, lb::CELLID, lb::SUCCESS_RATE, lb::HOTIME});
+    this->ho_prediction.setLabels({lb::HOTIME, lb::CELLID, lb::SUCCESS_RATE, lb::FAIL_TIME});
     this->ho_prediction.addRow();   // reserve a row to store the results
     current_cell = 0;
 }
@@ -93,7 +100,7 @@ DataFrame CarrierEnv::getPrediction()
 void CarrierEnv::updateLocation(double lng, double lat, double time)
 {
     LOG_MESSAGE("CarrierEnv::updateLocation", lng, lat, time, "df size is", df.size());
-    this->predict_tcp(lng, lat, time);
+    //this->predict_tcp(lng, lat, time);
     this->predict_handover(lng, lat, time);
     prev_location = {lng, lat, time};
 }
@@ -109,16 +116,20 @@ void CarrierEnv::predict_handover(double lng, double lat, double time)
     /* select the current cell id */
     auto cid_col = this->ho_df.getColumn(Label::CELLID),
          lng_col = this->ho_df.getColumn(Label::LONGTITUDE),
-         lat_col = this->ho_df.getColumn(Label::LATITIDE);
+         lat_col = this->ho_df.getColumn(Label::LATITIDE),
+         ho_col = this->ho_df.getColumn(Label::HANDOVER);
 
     auto cell_df = this->ho_df.where(cid_col, [this](const double d){return int(d) == this->current_cell;});
+    auto cell_df1 = cell_df.where(ho_col, [](const double d){return d == 1;});
+    //auto cell_df2 = cell_df.where(ho_col, [](const double d){return d > 1;});
+    double succ_rate = (0. + cell_df1.rows() * 1.0) / (0. + cell_df.rows());
     if(cell_df.rows() == 0)
     {
         LOG("WARNING", "CarrierEnv::predict_handover: no cell handover information!");
         return;
     }
     auto avg_df = DataFrameHelper::GetAverage(cell_df);
-    LOG_DEBUG("\n",avg_df.to_string());
+    //LOG_DEBUG("\n",avg_df.to_string());
 
     next_lng = avg_df.getData()[0].get(lng_col);
     next_lat = avg_df.getData()[0].get(lat_col);
@@ -139,12 +150,62 @@ void CarrierEnv::predict_handover(double lng, double lat, double time)
         (v_lng * v_lng + v_lat * v_lat);
     LOG_DEBUG("CarrierEnv::predict_handover: remain time is: ", remain_time);
 
+    /* handover failure prediction */
+    double fail_time = 86400;
+    cid_col = this->bd_df.getColumn(Label::CELLID);
+    lng_col = this->bd_df.getColumn(Label::LONGTITUDE),
+    lat_col = this->bd_df.getColumn(Label::LATITIDE);
+    auto sta_col = this->bd_df.getColumn(Label::BOUND_STATUS),
+         lnc_col = this->bd_df.getColumn(Label::LNG_CFDS),
+         lac_col = this->bd_df.getColumn(Label::LAT_CFDS);
+
+    cell_df = this->bd_df.where(cid_col, [this](const double d){return int(d) == this->current_cell;});
+
+    double lng_cfds, lat_cfds, fail_lng, fail_lat;
+    int status;
+    if(cell_df.rows() == 0) 
+        goto FINAL;
+    status = (int)cell_df.getData()[0].get(sta_col);
+    lng_cfds = cell_df.getData()[0].get(lnc_col);
+    lat_cfds = cell_df.getData()[0].get(lac_col);
+    fail_lng = cell_df.getData()[0].get(lng_col);
+    fail_lat = cell_df.getData()[0].get(lat_col);
+    /**
+     * if status == -1: all fail, fail_time equals to time + remain_time
+     * if status == 1: all success, fail_time equals to 86400
+     * if status == 0: need check:
+     *  if LNG_CFDS == 1., fail_time = time + (LNG - currlng) / lng_spd
+     *  else if LAT_CFDS == 1., fail_time = time + (LAT - currlat) / lat_spd
+     *  else cannot determin, fail time equals to time + remain_time + 3
+     */
+    if(status == -1) // all fail
+    {
+        fail_time = time + remain_time;
+    }
+    else if (status == 1) // all success
+    {
+        fail_time = 86400.0;
+    }
+    else 
+    {
+        if(lng_cfds == 1) 
+            fail_time = time + (fail_lng - lng) / v_lng;
+        else if (lat_cfds == 1)
+            fail_time = time + (fail_lat - lat) / v_lat;
+        else 
+            fail_time = time + remain_time + 2;
+    }
+
+
     /* modify the prediction result */
+FINAL:;
     {
         std::unique_lock<std::mutex> lk(pred_lock);
         /* set prediction to 0 */
         this->ho_prediction.getData()[0].set(0, time + remain_time);
         this->ho_prediction.getData()[0].set(1, this->current_cell);
+        this->ho_prediction.getData()[0].set(2, succ_rate);
+        this->ho_prediction.getData()[0].set(3, fail_time);
     }
     //LOG_ERROR("CarrierEnv::predict_handover: not implemented!");
 }

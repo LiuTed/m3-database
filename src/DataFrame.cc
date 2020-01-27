@@ -204,5 +204,9 @@ const std::string Label::CELLID     = "cell-id";
 const std::string Label::INDEX      = "index";
 const std::string Label::SUCCESS_RATE = "success rate";
 const std::string Label::HOTIME     = "handover time";
+const std::string Label::LNG_CFDS   = "lng confidence";
+const std::string Label::LAT_CFDS   = "lat confidence";
+const std::string Label::BOUND_STATUS = "ho status";
+const std::string Label::FAIL_TIME  = "fail time";
 
 } // namespace src

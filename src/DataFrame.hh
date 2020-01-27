@@ -33,6 +33,10 @@ class Label
         const static std::string INDEX;         /* index of the entry */
         const static std::string SUCCESS_RATE;  /* the possibility of ho success */
         const static std::string HOTIME;        /* predicted ho time */
+        const static std::string LNG_CFDS;      /* lng confidence in boundry file */
+        const static std::string LAT_CFDS;      /* lat confidence in boundry file */
+        const static std::string BOUND_STATUS;  /* historical handover status */
+        const static std::string FAIL_TIME;     /* predicted handover failure time */
 };
 
 /**
