@@ -2,49 +2,103 @@
 #include <fstream>
 #include <algorithm>
 #include "common/common.hh"
+#include "common/Progress.hh"
 #include "src/DataFrame.hh"
 #include "src/DataBlock.hh"
+#include "src/database.hh"
+
+bool run_one_carrier(db::Carrier_t crr, const std::string &dir_file, const std::string &trace_file,
+        const std::string &ground_truth)
+{
+    auto *pdbc = db::DatabaseContext::GetDatabaseContext();
+    db::Initialize({{crr, dir_file}});
+
+    /* read ground truth */
+    using lb = src::Label;
+    src::DataFrame gt{ground_truth};
+    gt.setLabels({lb::INDEX, lb::LONGTITUDE, lb::LATITIDE, lb::SPEED, 
+            lb::HANDOVER, lb::TIME, lb::CELLID});
+    //std::cerr<<gt.to_string()<<std::endl;
+
+    /* read trace file and update */
+    //common::input_helper helper(trace_file, ' ');
+    /* 0,1: gps, 7: time, 9: cid */
+    std::cerr.sync_with_stdio(false);
+    src::DataFrame df(trace_file);
+    int i = std::rand() % (df.rows() - 30);
+    LOG_MESSAGE("Testing carrier", crr, "Randomly choose 30 seconds start from", i);
+    src::DataFrame result, warn_result;
+    bool flag = false;
+    common::ProgressBar bar(std::cout, df.rows(), "running");
+    for(auto &db : df.getData())
+    {
+        bar.increase(1);
+        //LOG("Data", db.get(0), db.get(1), db.get(8), db.get(10));
+        if(db.get(3) < 220) continue; // low speed
+        db::UpdateCellID((db::Cid_t)(db.get(10)), crr);
+        db::UpdateGPS(db.get(1), db.get(2), db.get(8));
+        pdbc->wait();
+        auto val = pdbc->getPrediction(crr);
+
+        auto curr_cell = db.get(10);
+        if(!flag)
+        {
+            auto labels = val.getLabels();
+            labels.push_back(src::Label::TIME);
+            labels.push_back("error");
+            result.setLabels(labels);
+            flag = false;
+        }
+
+        if(val.rows() > 0 && 
+                (db::Cid_t)val.select({lb::CELLID}).getData()[0].get(0) == curr_cell)
+        {
+            result.getData().push_back(val.getData()[0]);
+            result.getData().back().add(db.get(8));
+
+            /* calculate error */
+            auto tempdf = gt.select({lb::CELLID, lb::TIME, lb::HANDOVER});
+            tempdf = tempdf.where(0, [curr_cell](const double d){return d == curr_cell;});
+            auto &vec = tempdf.getData();
+            double err = 1e6;
+            double err_warn = 1e6;
+            for(auto v : vec)
+            {
+                err = std::min(err, std::fabs(v.get(1) - val.getData()[0].get(0)));
+                err_warn = std::min(err, std::fabs(v.get(2) - val.getData()[0].get(3)));
+            }
+
+            if(tempdf.getData()[0].get(2) != 1) // handover failure
+            {
+                warn_result.addRow();
+                warn_result.getData().back().add(err_warn);
+            }
+
+            if(err > 1e5) continue;
+            result.getData().back().add(err);
+
+        }
+        
+        //LOG_DEBUG("Val is:");
+        //std::cerr<<val.to_string()<<std::endl;
+        //std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    }
+
+    pdbc->wait();
+    db::DatabaseContext::DeleteDatabaseContext();
+    /* print result to stdout */
+    std::ofstream fout("running/output.log");
+    fout<<result.to_string(false)<<std::endl;
+    fout.close();
+    std::ofstream fout2("running/warning.log");
+    fout2<<warn_result.to_string(false)<<std::endl;
+    fout2.close();
+    return true;
+}
 
 int main(int argc, char *argv[])
 {
-    if(argc != 3)
-    {
-        LOG_ERROR("Usage:", argv[0], "<total disconnection file>", "<output prefix>");
-        exit(-1);
-    }
-
-    src::DataFrame df(argv[1]);
-    /**
-     * df format:
-     *  <index> <lng> <lat> <spd> <majtype> <daytime> <cid>
-     */
-
-    df.setLabels({"index", "lng", "lat", "spd", "major type", "daytime", "cid"});
-    auto cid_blocks = df.getData();
-    std::vector<int64_t> cid_vec;
-    for(auto cb : cid_blocks)
-        cid_vec.push_back(cb.get(6));
-
-    std::sort(cid_vec.begin(), cid_vec.end());
-    auto it = std::unique(cid_vec.begin(), cid_vec.end());
-    cid_vec.resize(std::distance(cid_vec.begin(), it));
-
-    int cnt = 0;
-    for(unsigned i=0;i<cid_vec.size();i++)
-    {
-        auto cid = cid_vec[i];
-        auto temp_df = df.where([cid](const src::Datablock &d){
-                    // cid: 6, lng: 2, lat: 3, daytime: 5
-                    return d.get(6) == cid &&
-                        d.get(2) < 32.54 &&
-                        d.get(2) > 32.46 &&
-                        d.get(5) < 57600;
-                });
-        if(temp_df.rows() < 5) continue;
-        std::ofstream fout(std::string(argv[2]) + std::to_string(cnt));
-        fout<<temp_df.to_string(false)<<std::endl;
-        cnt += 1;
-    }
-    LOG_MESSAGE("Got count: ", cnt);
+    auto ret = run_one_carrier(db::MOBILE, "../m3db-data/dir-Mobile.1", "../m3db-data/datafiles/20191206.5099-Mobile-final.csv.1",
+            "../gps_processor/processed/all/20191206.5099-Mobile-dis-start.csv");
+    return 0;
 }
-

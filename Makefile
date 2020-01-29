@@ -22,7 +22,7 @@ bin/m3-database.a: ${SUBOBJS}
 
 $(SUBDIRS): 
 	- mkdir -p bin/
-	make -C $@ -j2
+	make -C $@ -j4
 
 $(SUBOBJS): $(SUBDIRS)
 

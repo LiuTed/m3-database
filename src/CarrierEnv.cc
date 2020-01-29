@@ -119,7 +119,9 @@ void CarrierEnv::predict_handover(double lng, double lat, double time)
          lat_col = this->ho_df.getColumn(Label::LATITIDE),
          ho_col = this->ho_df.getColumn(Label::HANDOVER);
 
-    auto cell_df = this->ho_df.where(cid_col, [this](const double d){return int(d) == this->current_cell;});
+    auto cell_df = this->ho_df.where(cid_col, [this](const double d){return int(d) == this->current_cell;})
+                .where(lng_col, [lng](const double d){return std::fabs(lng - d) < 0.1;})
+                .where(lat_col, [lat](const double d){return std::fabs(lat - d) < 0.1;});
     auto cell_df1 = cell_df.where(ho_col, [](const double d){return d == 1;});
     //auto cell_df2 = cell_df.where(ho_col, [](const double d){return d > 1;});
     double succ_rate = (0. + cell_df1.rows() * 1.0) / (0. + cell_df.rows());
@@ -129,7 +131,7 @@ void CarrierEnv::predict_handover(double lng, double lat, double time)
         return;
     }
     auto avg_df = DataFrameHelper::GetAverage(cell_df);
-    //LOG_DEBUG("\n",avg_df.to_string());
+    LOG_DEBUG("\n",avg_df.to_string());
 
     next_lng = avg_df.getData()[0].get(lng_col);
     next_lat = avg_df.getData()[0].get(lat_col);
@@ -146,8 +148,10 @@ void CarrierEnv::predict_handover(double lng, double lat, double time)
      */
     double delta_lng = next_lng - lng,
            delta_lat = next_lat - lat;
-    double remain_time = ((delta_lng * v_lng) + (delta_lat * v_lat)) / 
-        (v_lng * v_lng + v_lat * v_lat);
+    double remain_time = std::sqrt((delta_lat * delta_lat + delta_lng * delta_lng) / 
+        (v_lng * v_lng + v_lat * v_lat));
+    //double remain_time = ((delta_lng * v_lng) + (delta_lat * v_lat)) / 
+    //    (v_lng * v_lng + v_lat * v_lat);
     LOG_DEBUG("CarrierEnv::predict_handover: remain time is: ", remain_time);
 
     /* handover failure prediction */
@@ -176,7 +180,7 @@ void CarrierEnv::predict_handover(double lng, double lat, double time)
      * if status == 0: need check:
      *  if LNG_CFDS == 1., fail_time = time + (LNG - currlng) / lng_spd
      *  else if LAT_CFDS == 1., fail_time = time + (LAT - currlat) / lat_spd
-     *  else cannot determin, fail time equals to time + remain_time + 3
+     *  else cannot determin, fail time equals to time + remain_time
      */
     if(status == -1) // all fail
     {
