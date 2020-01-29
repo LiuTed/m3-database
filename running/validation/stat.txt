@@ -1,0 +1,4 @@
+Carrier,Undetected,Before,Total
+Mobile,39,125,1772
+Teleco,104,312,3643
+Unicom,85,247,3352
