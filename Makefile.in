@@ -4,7 +4,7 @@ AR  := ar
 RANLIB  := ranlib
 
 LDFLAGS := -lpthread
-FLAGS 	:= -g ${LDFLAGS} -march=native -O0
+FLAGS 	:= -g ${LDFLAGS} -march=native -O2
 CFLAGS 	:= ${FLAGS}
 CPPFLAGS:= -std=c++11 ${FLAGS}
 

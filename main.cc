@@ -8,7 +8,7 @@
 #include "src/database.hh"
 
 bool run_one_carrier(db::Carrier_t crr, const std::string &dir_file, const std::string &trace_file,
-        const std::string &ground_truth)
+        const std::string &ground_truth, const std::string &logname)
 {
     auto *pdbc = db::DatabaseContext::GetDatabaseContext();
     db::Initialize({{crr, dir_file}});
@@ -30,6 +30,7 @@ bool run_one_carrier(db::Carrier_t crr, const std::string &dir_file, const std::
     src::DataFrame result, warn_result;
     bool flag = false;
     common::ProgressBar bar(std::cout, df.rows(), "running");
+    int undet_cnt = 0, total_cnt = 0;
     for(auto &db : df.getData())
     {
         bar.increase(1);
@@ -41,6 +42,7 @@ bool run_one_carrier(db::Carrier_t crr, const std::string &dir_file, const std::
         auto val = pdbc->getPrediction(crr);
 
         auto curr_cell = db.get(10);
+        auto curr_time = db.get(8);
         if(!flag)
         {
             auto labels = val.getLabels();
@@ -58,19 +60,23 @@ bool run_one_carrier(db::Carrier_t crr, const std::string &dir_file, const std::
 
             /* calculate error */
             auto tempdf = gt.select({lb::CELLID, lb::TIME, lb::HANDOVER});
-            tempdf = tempdf.where(0, [curr_cell](const double d){return d == curr_cell;});
+            tempdf = tempdf.where(0, [curr_cell](const double d){return d == curr_cell;})
+                            .where(1, [curr_time](const double d){return std::fabs(d - curr_time) < 100;});
+            //std::cout<<tempdf.to_string()<<std::endl;
+            if(tempdf.rows() != 1) continue;
             auto &vec = tempdf.getData();
             double err = 1e6;
             double err_warn = 1e6;
             for(auto v : vec)
             {
                 err = std::min(err, std::fabs(v.get(1) - val.getData()[0].get(0)));
-                err_warn = std::min(err, std::fabs(v.get(2) - val.getData()[0].get(3)));
+                err_warn = std::min(err_warn, v.get(1) - val.getData()[0].get(3));
             }
 
             if(tempdf.getData()[0].get(2) != 1) // handover failure
             {
                 warn_result.addRow();
+                warn_result.getData().back().add(curr_cell);
                 warn_result.getData().back().add(err_warn);
             }
 
@@ -87,10 +93,10 @@ bool run_one_carrier(db::Carrier_t crr, const std::string &dir_file, const std::
     pdbc->wait();
     db::DatabaseContext::DeleteDatabaseContext();
     /* print result to stdout */
-    std::ofstream fout("running/output.log");
-    fout<<result.to_string(false)<<std::endl;
-    fout.close();
-    std::ofstream fout2("running/warning.log");
+    //std::ofstream fout("running/output.log");
+    //fout<<result.to_string(false)<<std::endl;
+    //fout.close();
+    std::ofstream fout2(logname);
     fout2<<warn_result.to_string(false)<<std::endl;
     fout2.close();
     return true;
@@ -98,7 +104,29 @@ bool run_one_carrier(db::Carrier_t crr, const std::string &dir_file, const std::
 
 int main(int argc, char *argv[])
 {
-    auto ret = run_one_carrier(db::MOBILE, "../m3db-data/dir-Mobile.1", "../m3db-data/datafiles/20191206.5099-Mobile-final.csv.1",
-            "../gps_processor/processed/all/20191206.5099-Mobile-dis-start.csv");
+    run_one_carrier(db::MOBILE, "../m3db-data/dir-Mobile.1", 
+            "../m3db-data/datafiles/20191206.5099-Mobile-final.csv.1",
+            "../gps_processor/processed/all/20191206.5099-Mobile-dis-start.csv", 
+            "running/validation/dir_warning/w1.log");
+    run_one_carrier(db::MOBILE, "../m3db-data/dir-Mobile.1", 
+            "../m3db-data/datafiles/20191206.5102-Mobile-final.csv.1",
+            "../gps_processor/processed/all/20191206.5102-Mobile-dis-start.csv",
+            "running/validation/dir_warning/w2.log");
+    run_one_carrier(db::MOBILE, "../m3db-data/dir-Mobile.1", 
+            "../m3db-data/datafiles/20191208.5102-Mobile-final.csv.1",
+            "../gps_processor/processed/all/20191208.5102-Mobile-dis-start.csv",
+            "running/validation/dir_warning/w3.log");
+    run_one_carrier(db::TELECOM, "../m3db-data/dir-Teleco.1", 
+            "../m3db-data/datafiles/20191206.5099-Teleco-final.csv.1",
+            "../gps_processor/processed/all/20191206.5099-Teleco-dis-start.csv", 
+            "running/validation/dir_warning/w4.log");
+    run_one_carrier(db::TELECOM, "../m3db-data/dir-Teleco.1", 
+            "../m3db-data/datafiles/20191206.5102-Teleco-final.csv.1",
+            "../gps_processor/processed/all/20191206.5102-Teleco-dis-start.csv",
+            "running/validation/dir_warning/w5.log");
+    run_one_carrier(db::TELECOM, "../m3db-data/dir-Teleco.1", 
+            "../m3db-data/datafiles/20191208.5102-Teleco-final.csv.1",
+            "../gps_processor/processed/all/20191208.5102-Teleco-dis-start.csv",
+            "running/validation/dir_warning/w6.log");
     return 0;
 }

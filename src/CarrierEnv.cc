@@ -1,4 +1,5 @@
 #include <functional>
+#include <random>
 #include <algorithm>
 #include "CarrierEnv.hh"
 #include "../common/Progress.hh"
@@ -155,54 +156,65 @@ void CarrierEnv::predict_handover(double lng, double lat, double time)
     LOG_DEBUG("CarrierEnv::predict_handover: remain time is: ", remain_time);
 
     /* handover failure prediction */
-    double fail_time = 86400;
-    cid_col = this->bd_df.getColumn(Label::CELLID);
-    lng_col = this->bd_df.getColumn(Label::LONGTITUDE),
-    lat_col = this->bd_df.getColumn(Label::LATITIDE);
-    auto sta_col = this->bd_df.getColumn(Label::BOUND_STATUS),
-         lnc_col = this->bd_df.getColumn(Label::LNG_CFDS),
-         lac_col = this->bd_df.getColumn(Label::LAT_CFDS);
+    double fail_time = time + remain_time + 1;
+    cell_df = cell_df.where(ho_col, [](const double d){return d > 1;});
+    if(cell_df.rows() > 1)
+    {
+        auto avg_df = DataFrameHelper::GetAverage(cell_df);
+        next_lng = avg_df.getData()[0].get(lng_col);
+        next_lat = avg_df.getData()[0].get(lat_col);
+        double delta_lng = next_lng - lng,
+               delta_lat = next_lat - lat;
+        fail_time = time + std::sqrt((delta_lat * delta_lat + delta_lng * delta_lng) / 
+                (v_lng * v_lng + v_lat * v_lat)) - 1.0;
+    }
 
-    cell_df = this->bd_df.where(cid_col, [this](const double d){return int(d) == this->current_cell;});
+    //cid_col = this->bd_df.getColumn(Label::CELLID);
+    //lng_col = this->bd_df.getColumn(Label::LONGTITUDE),
+    //lat_col = this->bd_df.getColumn(Label::LATITIDE);
+    //auto sta_col = this->bd_df.getColumn(Label::BOUND_STATUS),
+    //     lnc_col = this->bd_df.getColumn(Label::LNG_CFDS),
+    //     lac_col = this->bd_df.getColumn(Label::LAT_CFDS);
 
-    double lng_cfds, lat_cfds, fail_lng, fail_lat;
-    int status;
-    if(cell_df.rows() == 0) 
-        goto FINAL;
-    status = (int)cell_df.getData()[0].get(sta_col);
-    lng_cfds = cell_df.getData()[0].get(lnc_col);
-    lat_cfds = cell_df.getData()[0].get(lac_col);
-    fail_lng = cell_df.getData()[0].get(lng_col);
-    fail_lat = cell_df.getData()[0].get(lat_col);
-    /**
-     * if status == -1: all fail, fail_time equals to time + remain_time
-     * if status == 1: all success, fail_time equals to 86400
-     * if status == 0: need check:
-     *  if LNG_CFDS == 1., fail_time = time + (LNG - currlng) / lng_spd
-     *  else if LAT_CFDS == 1., fail_time = time + (LAT - currlat) / lat_spd
-     *  else cannot determin, fail time equals to time + remain_time
-     */
-    if(status == -1) // all fail
-    {
-        fail_time = time + remain_time;
-    }
-    else if (status == 1) // all success
-    {
-        fail_time = 86400.0;
-    }
-    else 
-    {
-        if(lng_cfds == 1) 
-            fail_time = time + (fail_lng - lng) / v_lng;
-        else if (lat_cfds == 1)
-            fail_time = time + (fail_lat - lat) / v_lat;
-        else 
-            fail_time = time + remain_time + 2;
-    }
+    //cell_df = this->bd_df.where(cid_col, [this](const double d){return int(d) == this->current_cell;});
+
+    //double lng_cfds, lat_cfds, fail_lng, fail_lat;
+    //int status;
+    //if(cell_df.rows() == 0) 
+    //    goto FINAL;
+    //status = (int)cell_df.getData()[0].get(sta_col);
+    //lng_cfds = cell_df.getData()[0].get(lnc_col);
+    //lat_cfds = cell_df.getData()[0].get(lac_col);
+    //fail_lng = cell_df.getData()[0].get(lng_col);
+    //fail_lat = cell_df.getData()[0].get(lat_col);
+    ///**
+    // * if status == -1: all fail, fail_time equals to time + remain_time
+    // * if status == 1: all success, fail_time equals to 86400
+    // * if status == 0: need check:
+    // *  if LNG_CFDS == 1., fail_time = time + (LNG - currlng) / lng_spd
+    // *  else if LAT_CFDS == 1., fail_time = time + (LAT - currlat) / lat_spd
+    // *  else cannot determin, fail time equals to time + remain_time
+    // */
+    //if(status == -1) // all fail
+    //{
+    //    fail_time = time + remain_time;
+    //}
+    //else if (status == 1) // all success
+    //{
+    //    fail_time = 86400.0;
+    //}
+    //else 
+    //{
+    //    if(lng_cfds == 1) 
+    //        fail_time = time + (fail_lng - lng) / v_lng;
+    //    else if (lat_cfds == 1)
+    //        fail_time = time + (fail_lat - lat) / v_lat;
+    //    else 
+    //        fail_time = time + remain_time + 2;
+    //}
 
 
     /* modify the prediction result */
-FINAL:;
     {
         std::unique_lock<std::mutex> lk(pred_lock);
         /* set prediction to 0 */
