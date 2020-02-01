@@ -92,7 +92,7 @@ bool End2EndTest::run()
 {
     bool ret = true;
 
-    ret = run_one_carrier(db::MOBILE, "running/dir-Mobile.txt", "running/testtrace-Mobile.csv");
+    ret = run_one_carrier(db::MOBILE, "e2etest/dir-Mobile.1", "running/testtrace-Mobile.csv");
     //ret = run_one_carrier(db::MOBILE, "../m3db-data/dir-Mobile.1", "running/testtrace-Mobile.csv");
     if(!ret)
     { 
@@ -100,14 +100,14 @@ bool End2EndTest::run()
         return false;
     }
 
-    ret = run_one_carrier(db::UNICOM, "running/dir-Unicom.txt", "running/testtrace-Unicom.csv");
+    ret = run_one_carrier(db::UNICOM, "e2etest/dir-Unicom.1", "running/testtrace-Unicom.csv");
     if(!ret)
     { 
         LOG_ERROR("Unicom test does not pass!");
         return false;
     }
 
-    ret = run_one_carrier(db::TELECOM, "running/dir-Telecom.txt", "running/testtrace-Telecom.csv");
+    ret = run_one_carrier(db::TELECOM, "e2etest/dir-Teleco.1", "running/testtrace-Telecom.csv");
     if(!ret)
     { 
         LOG_ERROR("Telecom test does not pass!");

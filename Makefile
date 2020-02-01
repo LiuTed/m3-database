@@ -31,10 +31,11 @@ clean:
 		$(MAKE) -C $$dir clean; \
 	done
 	rm -rf bin/*
+	cd e2etest && ls | grep -v "db.tar.gz" | grep -v "prepare.sh" | xargs rm -rf
 
 check: bin/test
 	- mkdir -p bin/
-	- cd running && ./preparedata.sh
+	- cd e2etest && ./prepare.sh
 	- bin/test
 
 lines: 
